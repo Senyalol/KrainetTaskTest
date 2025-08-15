@@ -2,11 +2,11 @@ package com.userManagment.Auth.Repository;
 
 import com.userManagment.Auth.Entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
-@RequestMapping
+@Repository
 public interface UserRepostiory extends JpaRepository<User,Integer> {
 
     User findById(int id);

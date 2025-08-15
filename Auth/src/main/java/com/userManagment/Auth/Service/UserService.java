@@ -5,13 +5,19 @@ import com.userManagment.Auth.DTO.CreateUserDTO;
 import com.userManagment.Auth.DTO.FullUserInfoDTO;
 import com.userManagment.Auth.DTO.PatchUserDTO;
 import com.userManagment.Auth.DTO.ShortUserInfoDTO;
+import com.userManagment.Auth.Entity.Role;
 import com.userManagment.Auth.Entity.User;
 import com.userManagment.Auth.Repository.UserRepostiory;
+import com.userManagment.Auth.Service.Strategy.AttributeClasses.*;
+import com.userManagment.Auth.Service.Strategy.Cheacker;
+import com.userManagment.Auth.Service.Strategy.CheckStrategy;
 import com.userManagment.Auth.mapping.UserMapping;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -44,10 +50,10 @@ public class UserService {
         //В противном случае он по дефолту будет USER
         String adminKey = createUserDTO.getKeyForAdmin();
         if (adminKey != null && adminKey.equals("X8JGxLy8")) {
-            newUser.setRole("ADMIN");
+            newUser.setRole(Role.ADMIN.toString());
         }
         else {
-            newUser.setRole("USER");
+            newUser.setRole(Role.USER.toString());
         }
 
         userRepostiory.save(newUser);
@@ -78,40 +84,15 @@ public class UserService {
             System.out.println("No data to edit user");
         }
 
-        //Если нужно изменить username
-        if(patchUserDTO.getUsername() != null){
-            editableUser.setUsername(patchUserDTO.getUsername());
-        }
 
-        //Если нужно изменить пароль
-        if(patchUserDTO.getPassword() != null){
-            editableUser.setPassword(patchUserDTO.getPassword());
-        }
+        List<CheckStrategy> cheackers = Arrays.asList(
+          new UsernameCheck(), new PasswordCheck(), new EmailCheck(),
+                new FirstNameCheck(), new LastNameCheck(), new RoleCheck()
+        );
 
-        //Если нужно изменить почту
-        if(patchUserDTO.getEmail() != null){
-            editableUser.setEmail(patchUserDTO.getEmail());
-        }
+        Cheacker cheacker = new Cheacker(cheackers);
+        cheacker.cheack(editableUser, patchUserDTO);
 
-        //Если нужно изменить имя
-        if(patchUserDTO.getFirstName() != null){
-            editableUser.setFirstname(patchUserDTO.getFirstName());
-        }
-
-        //Если нужно изменить фамилию
-        if(patchUserDTO.getLastName() != null){
-            editableUser.setLastname(patchUserDTO.getLastName());
-        }
-
-        String adminKey = patchUserDTO.getKeyForAdmin();
-        //Если нужно поменять роль
-        if(adminKey != null && adminKey.equals("X8JGxLy8")){
-            editableUser.setRole("ADMIN");
-        }
-
-        else{
-            editableUser.setRole("USER");
-        }
 
         userRepostiory.save(editableUser);
 
@@ -122,6 +103,6 @@ public class UserService {
         userRepostiory.deleteById(id);
     }
 
-
+    
 
 }

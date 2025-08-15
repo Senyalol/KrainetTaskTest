@@ -8,17 +8,23 @@ import com.userManagment.Auth.DTO.ShortUserInfoDTO;
 import com.userManagment.Auth.Entity.Role;
 import com.userManagment.Auth.Entity.User;
 import com.userManagment.Auth.Repository.UserRepostiory;
-import com.userManagment.Auth.Service.Strategy.AttributeClasses.*;
-import com.userManagment.Auth.Service.Strategy.Cheacker;
-import com.userManagment.Auth.Service.Strategy.CheckStrategy;
+import com.userManagment.Auth.Security.JWTService;
+import com.userManagment.Auth.Security.SDTO.JwtAuthenticationDTO;
+import com.userManagment.Auth.Security.SDTO.RefreshTokenDTO;
+import com.userManagment.Auth.Security.SDTO.UserCredentialDTO;
+import com.userManagment.Auth.Service.StrategyCheck.AttributeClasses.*;
+import com.userManagment.Auth.Service.StrategyCheck.Cheacker;
+import com.userManagment.Auth.Service.StrategyCheck.CheckStrategy;
 import com.userManagment.Auth.mapping.UserMapping;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.lang.reflect.Array;
+import javax.naming.AuthenticationException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,11 +34,20 @@ public class UserService {
 
     private final UserRepostiory userRepostiory;
     private final UserMapping userMapping;
+    private final PasswordEncoder passwordEncoder;
+    private final JWTService jwtService;
 
+    //Конструктор класса
     @Autowired
-    public UserService(UserRepostiory userRepostiory, UserMapping userMapping) {
+    public UserService(UserRepostiory userRepostiory,
+                       UserMapping userMapping,
+                       PasswordEncoder passwordEncoder,
+                       JWTService jwtService) {
+
         this.userRepostiory = userRepostiory;
         this.userMapping = userMapping;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     //Метод для регистрации пользователя (Для всех)
@@ -86,7 +101,7 @@ public class UserService {
 
 
         List<CheckStrategy> cheackers = Arrays.asList(
-          new UsernameCheck(), new PasswordCheck(), new EmailCheck(),
+          new UsernameCheck(), new PasswordCheck(passwordEncoder), new EmailCheck(),
                 new FirstNameCheck(), new LastNameCheck(), new RoleCheck()
         );
 
@@ -103,6 +118,44 @@ public class UserService {
         userRepostiory.deleteById(id);
     }
 
-    
+    //Метод для Авторизации и аутентификации
+    public JwtAuthenticationDTO signIn(UserCredentialDTO userCredentialDTO) throws AuthenticationException {
+        User user = findByCredentials(userCredentialDTO);
+        return jwtService.generateJwtAuthToken(user.getUsername());
+    }
+
+    //Метод для нахождения пользователя прошедшего аутентификацию
+    private User findByCredentials(UserCredentialDTO userCredentialDTO) throws AuthenticationException {
+        Optional<User> user = userRepostiory.findByUsername(userCredentialDTO.getUsername());
+        if(user.isPresent()) {
+            User certainUser = user.get();
+            if(passwordEncoder.matches(userCredentialDTO.getPassword(), certainUser.getPassword())) {
+                return certainUser;
+            }
+        }
+        throw new AuthenticationException("Username or password is incorrect");
+    }
+
+    //Метод для обновления jwt токена
+    public JwtAuthenticationDTO refreshToken(RefreshTokenDTO refreshTokenDTO) throws AuthenticationException {
+        String refreshToken = refreshTokenDTO.getRefreshToken();
+        if(refreshToken != null && jwtService.validateJwtToken(refreshToken)) {
+            try{
+                User user = findByUsername(jwtService.getUsernameFromToken(refreshToken));
+                return jwtService.refreshBaseToken(user.getUsername(), refreshToken);
+            }
+
+            catch(Exception e){
+                throw new AuthenticationException("User not found " + e.getMessage());
+            }
+        }
+        throw new AuthenticationException("Invalid refresh token");
+    }
+
+    //Найти пользователя по Username
+    private User findByUsername(String username) throws  Exception {
+        return userRepostiory.findByUsername(username)
+                .orElseThrow(() -> new Exception(String.format("User with email  %s not found", username)));
+    }
 
 }

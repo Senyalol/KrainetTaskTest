@@ -6,12 +6,18 @@ import com.userManagment.Auth.DTO.PatchUserDTO;
 import com.userManagment.Auth.DTO.ShortUserInfoDTO;
 import com.userManagment.Auth.Entity.User;
 import org.mapstruct.Mapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Mapper(componentModel = "spring")
 public interface UserMapping {
 
 
-        default FullUserInfoDTO userToFullUserInfoDTO(User user) {
+    PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(4);
+    
+
+    default FullUserInfoDTO userToFullUserInfoDTO(User user) {
             if ( user == null ) {
                 return null;
             }
@@ -104,7 +110,7 @@ public interface UserMapping {
             User user = new User();
 
             user.setUsername( createUserDTO.getUsername() );
-            user.setPassword( createUserDTO.getPassword() );
+            user.setPassword(passwordEncoder.encode(createUserDTO.getPassword()));
             user.setEmail( createUserDTO.getEmail() );
             user.setFirstname( createUserDTO.getFirstName() );
             user.setLastname( createUserDTO.getLastName() );

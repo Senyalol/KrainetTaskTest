@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/users")
 public class UserController {
 
     private final UserService userService;
@@ -26,13 +26,6 @@ public class UserController {
     @GetMapping
     public List<FullUserInfoDTO> getAllUsers() {
         return userService.getAllUsers();
-    }
-
-    //Зарегестрировать пользователя (Для всех)
-    //Адрес - http://localhost:8080/api/auth
-    @PostMapping
-    public ShortUserInfoDTO createUser(@RequestBody CreateUserDTO user) {
-        return userService.registerUser(user);
     }
 
     //Удалить пользователя (Только ADMIN)

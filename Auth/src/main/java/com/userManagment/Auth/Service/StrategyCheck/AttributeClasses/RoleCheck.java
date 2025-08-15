@@ -1,9 +1,9 @@
-package com.userManagment.Auth.Service.Strategy.AttributeClasses;
+package com.userManagment.Auth.Service.StrategyCheck.AttributeClasses;
 
 import com.userManagment.Auth.DTO.PatchUserDTO;
 import com.userManagment.Auth.Entity.Role;
 import com.userManagment.Auth.Entity.User;
-import com.userManagment.Auth.Service.Strategy.CheckStrategy;
+import com.userManagment.Auth.Service.StrategyCheck.CheckStrategy;
 
 public class RoleCheck implements CheckStrategy {
     @Override

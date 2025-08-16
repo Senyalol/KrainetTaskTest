@@ -83,20 +83,12 @@ public class JWTService {
             Jwts.parser().verifyWith(getSignInKey()).build().parseClaimsJws(token).getPayload();
             return true;
         }
-        catch (ExpiredJwtException e){
-            LOGGER.error("Expired JWT token",e);
+        catch (ExpiredJwtException  | UnsupportedJwtException | MalformedJwtException
+        | SecurityException e){
+            LOGGER.error("Jwt validation failed: {}",e.getMessage(),e);
         }
-        catch (UnsupportedJwtException e){
-            LOGGER.error("Unsupported JWT token",e);
-        }
-        catch (MalformedJwtException e){
-            LOGGER.error("Malformed JWT token",e);
-        }
-        catch (SecurityException e){
-            LOGGER.error("Security exception",e);
-        }
-        catch (Exception e){
-            LOGGER.error("Exception",e);
+        catch(Exception e){
+            LOGGER.error("Unexpected error during JWT validation ",e.getMessage(),e);
         }
         return false;
     }

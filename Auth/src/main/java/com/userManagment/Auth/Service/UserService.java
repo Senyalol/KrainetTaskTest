@@ -18,8 +18,10 @@ import com.userManagment.Auth.Service.StrategyCheck.CheckStrategy;
 import com.userManagment.Auth.mapping.UserMapping;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+//import org.springframework.web.bind.annotation.RequestHeader;
 
 import javax.naming.AuthenticationException;
 import java.util.Arrays;
@@ -116,6 +118,76 @@ public class UserService {
     //Метод для удаления пользователя по id (Только для Admin)
     public void deleteUserForAdmin(int id) {
         userRepostiory.deleteById(id);
+    }
+
+
+    //Метод для получения информации о себе для пользователя (Для всех)
+    public FullUserInfoDTO getUserInfo(String authHeader){
+       String username = extractUsernameFromJwt(authHeader);
+
+        User user = userRepostiory.findByUsername(username)
+               .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+
+        FullUserInfoDTO infoUserDTO = userMapping.userToFullUserInfoDTO(user);
+
+        return infoUserDTO;
+    }
+
+    //Метод для редактирования информации о себе для пользователя (Для всех)
+    public void editUserForUser(String authHeader,PatchUserDTO patchUserDTO) {
+
+        String username = extractUsernameFromJwt(authHeader);
+        User editUser = userRepostiory.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+
+        //Есди пользователя не существует
+        if(editUser == null) {
+            System.out.println("User with username " + username + " not found");
+        }
+
+        //Если данных для изменений нет
+        if(patchUserDTO == null) {
+            System.out.println("No data to edit user");
+        }
+
+        //Необходимые проверки
+        List<CheckStrategy> checkStrategies = Arrays.asList(
+                new UsernameCheck(), new PasswordCheck(passwordEncoder), new EmailCheck(),
+                    new FirstNameCheck(), new LastNameCheck(), new RoleCheck()
+        );
+
+        Cheacker cheacker = new Cheacker(checkStrategies);
+        cheacker.cheack(editUser, patchUserDTO);
+
+        userRepostiory.save(editUser);
+
+    }
+
+    //Метод для удаления своего юзера
+    public void deleteUserForUser(String authHeader) {
+        String username = extractUsernameFromJwt(authHeader);
+        User user = userRepostiory.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
+
+        userRepostiory.deleteById(user.getId());
+
+    }
+
+    //Метод позволяющий получить username из jwt токена
+    private String extractUsernameFromJwt(String authHeader){
+
+        if(authHeader == null){
+            throw new IllegalArgumentException("Authorization header is null");
+        }
+
+        if(!authHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Authorization header is incorrect");
+        }
+
+        String jwtToken = authHeader.substring(7);
+        String username = jwtService.getUsernameFromToken(jwtToken);
+
+        return username;
     }
 
     //Метод для Авторизации и аутентификации

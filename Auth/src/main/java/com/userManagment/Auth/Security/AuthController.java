@@ -44,7 +44,7 @@ public class AuthController {
 
     //Зарегестрировать пользователя (Для всех)
     //Адрес - http://localhost:8080/api/auth
-    @PostMapping
+    @PostMapping("/registration")
     public ShortUserInfoDTO createUser(@RequestBody CreateUserDTO user) {
         return userService.registerUser(user);
     }

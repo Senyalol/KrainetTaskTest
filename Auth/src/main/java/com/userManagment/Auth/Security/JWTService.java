@@ -10,16 +10,19 @@ import io.jsonwebtoken.security.SecurityException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 //import org.springframework.security.core.userdetails.User;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Base64;
 import java.util.Date;
 
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class JWTService {
@@ -77,20 +80,54 @@ public class JWTService {
         return Keys.hmacShaKeyFor(KeyBytes);
     }
 
+    //Извлечь заголовок из jwt токена
+    private String extractHeader(String token) {
+        try {
+            String[] parts = token.split("\\.");
+            return new String(Base64.getUrlDecoder().decode(parts[0]));
+        } catch (Exception ex) {
+            return "invalid_header";
+        }
+    }
+
     //Валидация jwt токена
     public boolean validateJwtToken(String token) {
         try {
             Jwts.parser().verifyWith(getSignInKey()).build().parseClaimsJws(token).getPayload();
             return true;
         }
-        catch (ExpiredJwtException  | UnsupportedJwtException | MalformedJwtException
-        | SecurityException e){
-            LOGGER.error("Jwt validation failed: {}",e.getMessage(),e);
+        catch (ExpiredJwtException e){
+            LOGGER.error("JWT token expired at {} | Subject: {}",
+                    e.getClaims().getExpiration(),
+                    e.getClaims().getSubject());
+
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session expired");
+        }
+        catch (UnsupportedJwtException e){
+            LOGGER.error("Unsupported JWT header:  Header: {} | Error: {}",
+                    extractHeader(token),
+                    e.getMessage());
+
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported token type");
+        }
+        catch (MalformedJwtException e){
+            LOGGER.error("Malformed JWT , error: {}",
+                    e.getMessage());
+
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid token format");
+        }
+        catch (SecurityException e){
+            LOGGER.error("JWT signature validation failed , error: {}",
+                    e.getMessage());
+
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid token");
         }
         catch(Exception e){
             LOGGER.error("Unexpected error during JWT validation ",e.getMessage(),e);
+
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected error during JWT validation");
         }
-        return false;
+//        return false;
     }
 
     //Получить username из jwt токена
@@ -99,7 +136,7 @@ public class JWTService {
         return claims.getSubject();
     }
 
-    //
+    //Сгенерировать новый токен при помощи предыдущего
     public JwtAuthenticationDTO refreshBaseToken(String username, String refreshToken) {
 
         User user = userRepostiory.findByUsername(username)

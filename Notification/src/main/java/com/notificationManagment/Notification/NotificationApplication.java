@@ -56,7 +56,7 @@ public class NotificationApplication {
 			// Создание сообщения
 			MimeMessage message = new MimeMessage(session);
 			message.setFrom(new InternetAddress(user));
-			message.addRecipient(Message.RecipientType.TO, new InternetAddress("egorlegejda@gmail.com"));
+			message.addRecipient(Message.RecipientType.TO, new InternetAddress("naumenko.sema@internet.ru"));
 			message.setSubject("Salam mama!");
 			message.setText("Салам алекум , Ега");
 

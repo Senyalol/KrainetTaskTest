@@ -5,6 +5,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.NotNull;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,6 +21,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final JWTService jwtService;
     private final UserDetailsServiceImpl userDetailsService;
+    private static final Logger LOGGER = LogManager.getLogger(JWTService.class);
 
     @Autowired
     public JwtFilter(JWTService jwtService, UserDetailsServiceImpl userDetailsService) {
@@ -30,11 +33,18 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NotNull HttpServletRequest request,
                                     @NotNull HttpServletResponse response,
                                     @NotNull FilterChain filterChain) throws ServletException, IOException {
+
         String token = getTokenFromRequest(request);
         if(token != null && jwtService.validateJwtToken(token)) {
             setCustomUserDetailsToSecurityContextHolder(token);
         }
+
+        else{
+            LOGGER.error("Invalid jwt token");
+        }
+
         filterChain.doFilter(request, response);
+
     }
 
     //Метод устанавливает аутентификацию для текущего пользователя.

@@ -12,15 +12,24 @@ import com.userManagment.Auth.Security.JWTService;
 import com.userManagment.Auth.Security.SDTO.JwtAuthenticationDTO;
 import com.userManagment.Auth.Security.SDTO.RefreshTokenDTO;
 import com.userManagment.Auth.Security.SDTO.UserCredentialDTO;
-import com.userManagment.Auth.Service.StrategyCheck.AttributeClasses.*;
-import com.userManagment.Auth.Service.StrategyCheck.Cheacker;
-import com.userManagment.Auth.Service.StrategyCheck.CheckStrategy;
+import com.userManagment.Auth.Service.StrategyPatchCheck.AttributeClasses.*;
+import com.userManagment.Auth.Service.StrategyPatchCheck.Cheacker;
+import com.userManagment.Auth.Service.StrategyPatchCheck.CheckStrategy;
+import com.userManagment.Auth.Service.StrategyRegistrationCheck.AttributeClasses.*;
+import com.userManagment.Auth.Service.StrategyRegistrationCheck.RegCheacker;
+import com.userManagment.Auth.Service.StrategyRegistrationCheck.RegCheckStrategy;
 import com.userManagment.Auth.mapping.UserMapping;
 import jakarta.transaction.Transactional;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.mapping.MappingException;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 //import org.springframework.web.bind.annotation.RequestHeader;
 
 import javax.naming.AuthenticationException;
@@ -34,6 +43,7 @@ import java.util.stream.Collectors;
 @JsonSerialize
 public class UserService {
 
+    private static final Logger LOGGER = LogManager.getLogger(UserService.class);
     private final UserRepostiory userRepostiory;
     private final UserMapping userMapping;
     private final PasswordEncoder passwordEncoder;
@@ -57,25 +67,52 @@ public class UserService {
 
         //Если пользователь для регистрации null
         if(createUserDTO == null) {
-            System.out.println("createUserDTO is null");
+            LOGGER.error("Attempt to register with null user DTO");
             throw new IllegalArgumentException("User data cannot be null");
         }
 
-        User newUser = userMapping.userCreateDTOToUser(createUserDTO);
+        //Ряд необходимых проверок для создания пользователя
+        List<RegCheckStrategy>  regCheckStrategies = Arrays.asList(
+                new UsernameRegCheck(userRepostiory), new PasswordRegCheck(), new EmailRegCheck(userRepostiory),
+                new FirstNameRegCheck(), new LastNameRegCheck()
+        );
+        RegCheacker regCheacker = new RegCheacker(regCheckStrategies);
 
-        //Если специальный ключ введен правильно - регистрируем пользователя как админа
-        //В противном случае он по дефолту будет USER
-        String adminKey = createUserDTO.getKeyForAdmin();
-        if (adminKey != null && adminKey.equals("X8JGxLy8")) {
-            newUser.setRole(Role.ADMIN.toString());
-        }
-        else {
-            newUser.setRole(Role.USER.toString());
+        if(regCheacker.checkRegCheacker(createUserDTO)) {
+
+            try {
+
+                User newUser = userMapping.userCreateDTOToUser(createUserDTO);
+
+                //Если специальный ключ введен правильно - регистрируем пользователя как админа
+                //В противном случае он по дефолту будет USER
+                String adminKey = createUserDTO.getKeyForAdmin();
+                if (adminKey != null && adminKey.equals("X8JGxLy8")) {
+                    newUser.setRole(Role.ADMIN.toString());
+                } else {
+                    newUser.setRole(Role.USER.toString());
+                }
+
+                userRepostiory.save(newUser);
+                LOGGER.info("User registered successfully: {} ", newUser.getUsername());
+                return userMapping.userToShortUserInfoDTO(newUser);
+            } catch (DataAccessException e) {
+                LOGGER.error("Database error during registration: {}", e.getMessage());
+                throw new ResponseStatusException(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Registration failed"
+                );
+            } catch (MappingException e) {
+                LOGGER.error("Mapping error: {}", e.getMessage());
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST,
+                        "Invalid user data"
+                );
+            }
+
         }
 
-        userRepostiory.save(newUser);
-        System.out.println("User - " + newUser.getUsername() + " has been registered");
-        return userMapping.userToShortUserInfoDTO(newUser);
+        return null;
     }
 
     //Метод для просмотра всех пользователей (Только ADMIN)
@@ -103,7 +140,7 @@ public class UserService {
 
 
         List<CheckStrategy> cheackers = Arrays.asList(
-          new UsernameCheck(), new PasswordCheck(passwordEncoder), new EmailCheck(),
+          new UsernameCheck(userRepostiory), new PasswordCheck(passwordEncoder), new EmailCheck(userRepostiory),
                 new FirstNameCheck(), new LastNameCheck(), new RoleCheck()
         );
 
@@ -117,9 +154,10 @@ public class UserService {
 
     //Метод для удаления пользователя по id (Только для Admin)
     public void deleteUserForAdmin(int id) {
+        String username = userRepostiory.findById(id).getUsername();
         userRepostiory.deleteById(id);
+        LOGGER.info("User: {} has been deleted",username);
     }
-
 
     //Метод для получения информации о себе для пользователя (Для всех)
     public FullUserInfoDTO getUserInfo(String authHeader){
@@ -152,7 +190,7 @@ public class UserService {
 
         //Необходимые проверки
         List<CheckStrategy> checkStrategies = Arrays.asList(
-                new UsernameCheck(), new PasswordCheck(passwordEncoder), new EmailCheck(),
+                new UsernameCheck(userRepostiory), new PasswordCheck(passwordEncoder), new EmailCheck(userRepostiory),
                     new FirstNameCheck(), new LastNameCheck(), new RoleCheck()
         );
 

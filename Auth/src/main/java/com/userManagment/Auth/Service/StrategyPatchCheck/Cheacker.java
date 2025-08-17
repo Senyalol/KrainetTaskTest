@@ -1,4 +1,4 @@
-package com.userManagment.Auth.Service.StrategyCheck;
+package com.userManagment.Auth.Service.StrategyPatchCheck;
 
 import com.userManagment.Auth.DTO.PatchUserDTO;
 import com.userManagment.Auth.Entity.User;

@@ -1,0 +1,13 @@
+{
+  "timestamp": "${json:timestamp}",
+  "level": "${json:level}",
+  "thread": "${json:thread}",
+  "logger": "${json:logger}",
+  "message": "${json:message}",
+  "context": "${json:context}",
+  "exception": {
+    "exception_class": "${json:exception:className}",
+    "exception_message": "${json:exception:message}",
+    "stacktrace": "${json:exception:stackTrace:text}"
+  }
+}

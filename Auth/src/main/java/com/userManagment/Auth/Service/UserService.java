@@ -268,4 +268,7 @@ public class UserService {
                 .orElseThrow(() -> new Exception(String.format("User with email  %s not found", username)));
     }
 
+    //Найти всех ADMIN для рассылки писем
+    //private List<FullUserInfoDTO> findAllAdmin()
+
 }

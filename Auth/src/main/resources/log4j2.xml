@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" packages="com.fasterxml.jackson.databind">
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <JsonLayout complete="true" compact="false">
+                <KeyValuePair key="application" value="Auth"/>
+                <KeyValuePair key="environment" value="${sys:ENV:-dev}"/>
+            </JsonLayout>
+        </Console>
+    </Appenders>
+
+    <Loggers>
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+        </Root>
+
+        <Logger name="org.springframework" level="WARN"/>
+        <Logger name="org.hibernate" level="WARN"/>
+    </Loggers>
+</Configuration>

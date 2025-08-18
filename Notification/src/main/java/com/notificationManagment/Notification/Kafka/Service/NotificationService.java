@@ -2,6 +2,7 @@ package com.notificationManagment.Notification.Kafka.Service;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +15,24 @@ import java.util.Properties;
 public class NotificationService {
 
     private static final Logger LOGGER = LogManager.getLogger(NotificationService.class);
+
+    @Value("${mail.username}")
+    private String user;
+
+    @Value("${mail.password}")
+    private String password;
+
+    @Value("${mail.smtp.auth}")
+    private String smtpAuth;
+
+    @Value("${mail.smtp.starttls.enable}")
+    private String starttlsEnable;
+
+    @Value("${mail.smtp.host}")
+    private String smtpHost;
+
+    @Value("${mail.smtp.port}")
+    private String smtpPort;
 
     @KafkaListener(topics = "EmailMessage", groupId = "EmailNotificationGroup", containerFactory = "kafkaListenerContainerFactory")
     public void listenEmailKafka(String email) throws Exception {
@@ -29,14 +48,12 @@ public class NotificationService {
     }
 
     private void sendEmail(String Emessage){
-        String user = "MrSimonCar@yandex.ru"; // Ваш логин
-        String password = "vnotnpfiepbfqiev";
 
         Properties properties = new Properties();
-        properties.put("mail.smtp.auth", "true");
-        properties.put("mail.smtp.starttls.enable", "true");
-        properties.put("mail.smtp.host", "smtp.yandex.ru");
-        properties.put("mail.smtp.port", "587");
+        properties.put("mail.smtp.auth", smtpAuth);
+        properties.put("mail.smtp.starttls.enable", starttlsEnable);
+        properties.put("mail.smtp.host", smtpHost);
+        properties.put("mail.smtp.port", smtpPort);
 
         Session session = Session.getInstance(properties, new Authenticator() {
             protected PasswordAuthentication getPasswordAuthentication() {
@@ -51,18 +68,16 @@ public class NotificationService {
             String eMessage = eMessageTemp.split(" receiver")[0].trim();
             String receiver =  Emessage.split("receiver ")[1].trim();
 
-            // Создание сообщения
             MimeMessage message = new MimeMessage(session);
             message.setFrom(new InternetAddress(user));
             message.addRecipient(Message.RecipientType.TO, new InternetAddress(receiver));
             message.setSubject(eTopic);
             message.setText(eMessage);
 
-            // Отправка сообщения
             Transport.send(message);
-            System.out.println("Сообщение успешно отправлено!");
+            LOGGER.info("Сообщение успешно отправлено! Получатель: {}",receiver);
         } catch (MessagingException e) {
-            e.printStackTrace();
+            LOGGER.error("Send email failed {}", e.getMessage());
         }
 
     }

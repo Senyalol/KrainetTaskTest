@@ -26,6 +26,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.mapping.MappingException;
 import org.springframework.http.HttpStatus;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ import org.springframework.web.server.ResponseStatusException;
 //import org.springframework.web.bind.annotation.RequestHeader;
 
 import javax.naming.AuthenticationException;
+//import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -48,18 +50,21 @@ public class UserService {
     private final UserMapping userMapping;
     private final PasswordEncoder passwordEncoder;
     private final JWTService jwtService;
+    private final KafkaTemplate<String,String> emailKafkaTemplate;
 
     //Конструктор класса
     @Autowired
     public UserService(UserRepostiory userRepostiory,
                        UserMapping userMapping,
                        PasswordEncoder passwordEncoder,
-                       JWTService jwtService) {
+                       JWTService jwtService,
+                       KafkaTemplate<String,String> emailKafkaTemplate) {
 
         this.userRepostiory = userRepostiory;
         this.userMapping = userMapping;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.emailKafkaTemplate = emailKafkaTemplate;
     }
 
     //Метод для регистрации пользователя (Для всех)
@@ -87,14 +92,25 @@ public class UserService {
                 //Если специальный ключ введен правильно - регистрируем пользователя как админа
                 //В противном случае он по дефолту будет USER
                 String adminKey = createUserDTO.getKeyForAdmin();
+                boolean isAdmin = false;
                 if (adminKey != null && adminKey.equals("X8JGxLy8")) {
                     newUser.setRole(Role.ADMIN.toString());
+                    isAdmin = true;
                 } else {
                     newUser.setRole(Role.USER.toString());
                 }
 
                 userRepostiory.save(newUser);
                 LOGGER.info("User registered successfully: {} ", newUser.getUsername());
+
+                //Если создан пользователь - происходит уведомление
+                if(!isAdmin){
+                    String uname = createUserDTO.getUsername();
+                    String upassword = createUserDTO.getPassword();
+                    String uemail = createUserDTO.getEmail();
+                    allAdminSendEmail("Создан",uname,upassword,uemail);
+                }
+
                 return userMapping.userToShortUserInfoDTO(newUser);
             } catch (DataAccessException e) {
                 LOGGER.error("Database error during registration: {}", e.getMessage());
@@ -188,6 +204,10 @@ public class UserService {
             System.out.println("No data to edit user");
         }
 
+        String oldUsername = editUser.getUsername();
+        String oldPassword = editUser.getPassword();
+        String oldEmail = editUser.getEmail();
+
         //Необходимые проверки
         List<CheckStrategy> checkStrategies = Arrays.asList(
                 new UsernameCheck(userRepostiory), new PasswordCheck(passwordEncoder), new EmailCheck(userRepostiory),
@@ -197,7 +217,9 @@ public class UserService {
         Cheacker cheacker = new Cheacker(checkStrategies);
         cheacker.cheack(editUser, patchUserDTO);
 
+
         userRepostiory.save(editUser);
+        allAdminSendEmail("Изменен",oldUsername,oldPassword,oldEmail);
 
     }
 
@@ -207,7 +229,11 @@ public class UserService {
         User user = userRepostiory.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
 
+        String uname = user.getUsername();
+        String password = user.getPassword();
+        String email = user.getEmail();
         userRepostiory.deleteById(user.getId());
+        allAdminSendEmail("Удален",uname,password,email);
 
     }
 
@@ -268,7 +294,34 @@ public class UserService {
                 .orElseThrow(() -> new Exception(String.format("User with email  %s not found", username)));
     }
 
-    //Найти всех ADMIN для рассылки писем
-    //private List<FullUserInfoDTO> findAllAdmin()
+    //Уведомить ADMIN о действии USER
+    private void allAdminSendEmail(String action,String username, String password, String email){
+
+        List<User> admins = userRepostiory.findAllByRole(Role.ADMIN.toString());
+
+        for(User user : admins){
+            sendNotification(action,username,password,email,user.getEmail());
+            LOGGER.info("Message successfully delivered to user {}",user.getUsername());
+        }
+
+    }
+
+    private void sendNotification(String action, String username , String password, String email,String emailAdmin){
+
+        String EmailTopic =  action + " пользователь " + username;
+        String EmailMessage = action + " пользователь с именем - " + username + ", паролем - " + password + " и почтой - " + email + " .";
+
+        String ResultMessage = EmailTopic + "|" + EmailMessage + " receiver " + emailAdmin;
+
+        try{
+            emailKafkaTemplate.send("EmailMessage",ResultMessage);
+            LOGGER.info("Message sent to email topic: EmailMessage");
+        }
+        catch(Exception e){
+            LOGGER.error("Kafka error: {}",e.getMessage());
+            throw new RuntimeException(e);
+        }
+
+    }
 
 }

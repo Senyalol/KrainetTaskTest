@@ -47,12 +47,45 @@
 <!--			<artifactId>jakarta.mail</artifactId>-->
 <!--			<version>1.6.7</version>-->
 <!--		</dependency>-->
-		<!-- https://mvnrepository.com/artifact/com.sun.mail/javax.mail -->
+
+		<!-- Зависимости для отправки писем -->
 		<dependency>
 			<groupId>com.sun.mail</groupId>
 			<artifactId>javax.mail</artifactId>
 			<version>1.6.2</version>
 		</dependency>
+		<!-- Зависимости для отправки писем -->
+
+		<!-- Зависимости для Kafka -->
+		<dependency>
+			<groupId>org.apache.kafka</groupId>
+			<artifactId>kafka-clients</artifactId>
+			<version>3.4.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.kafka</groupId>
+			<artifactId>spring-kafka</artifactId>
+			<version>3.3.7</version>
+		</dependency>
+		<!-- Зависимости для Kafka -->
+
+		<!-- Зависимости для десериализации данных -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.19.2</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+			<version>2.19.2</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-annotations</artifactId>
+			<version>2.19.2</version>
+		</dependency>
+		<!-- Зависимости для десериализации данных -->
 
 	</dependencies>
 

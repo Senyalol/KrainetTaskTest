@@ -56,7 +56,6 @@ public class JWTService {
         jwtAuthenticationDTO.setRefreshToken(generateJwtToken(username, email, role));
         return jwtAuthenticationDTO;
 
-
     }
 
     //Генерируем JWT token

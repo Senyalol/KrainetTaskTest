@@ -36,7 +36,8 @@ public class JWTService {
         this.userRepostiory = userRepostiory;
     }
 
-    @Value("YNExgYL2JM7tf5Cb5tU65YkLmjV0E696jOCCapDgYVkx")
+
+    @Value("${jwt.secret}")
     private String jwtsecret;
 
     //Получаем token и refreshToken для конкретного пользователя

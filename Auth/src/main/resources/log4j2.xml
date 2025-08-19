@@ -3,8 +3,8 @@
     <Appenders>
         <Console name="Console" target="SYSTEM_OUT">
             <JsonLayout complete="true" compact="false">
+                <KeyValuePair key="timestamp" value="$${date:yyyy-MM-dd HH:mm:ss}"/>
                 <KeyValuePair key="application" value="Auth"/>
-                <KeyValuePair key="environment" value="${sys:ENV:-dev}"/>
             </JsonLayout>
         </Console>
     </Appenders>

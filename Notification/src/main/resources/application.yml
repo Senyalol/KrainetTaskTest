@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: Notification
+
+mail:
+  smtp:
+    auth: true
+    starttls:
+      enable: true
+    host: ${SMTP_HOST}
+    port: ${SMTP_PORT}
+  username: ${MAIL_USERNAME}
+  password: ${MAIL_PASSWORD}
+
+kafka:
+  bootstrap:
+    servers: ${KAFKA_SERVER}:${KAFKA_PORT}
+
+logging:
+  level:
+    root: ${LOG_LEVEL}
